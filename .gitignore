@@ -1,0 +1,39 @@
+# BBS desktOO — .gitignore
+
+# --- Python ---
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+dist/
+*.egg-info/
+*.egg
+
+# --- Environnements virtuels ---
+.venv/
+venv/
+env/
+ENV/
+
+# --- Configuration locale / secrets ---
+# La config desktOO vit dans ~/.config/blacksamdev/, jamais dans le repo,
+# mais on blinde au cas où un fichier de clés traînerait dans l'arbre.
+*.conf
+.env
+*.key
+secrets.json
+
+# --- IDE / éditeurs ---
+.idea/
+.vscode/
+*.swp
+*~
+
+# --- KDE / Linux ---
+.directory
+
+# --- Logs / temporaires ---
+*.log
+*.tmp

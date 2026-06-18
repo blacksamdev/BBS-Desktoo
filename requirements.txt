@@ -1,0 +1,16 @@
+# BBS desktOO — dépendances
+
+# --- Cœur (obligatoire) ---
+PyQt6>=6.6.0
+PyQt6-QScintilla>=2.14.0
+
+# --- IA web embarquée (panneau haut, claude.ai) ---
+PyQt6-WebEngine>=6.6.0
+
+# --- Providers IA locaux/cloud (optionnels) ---
+# Claude :
+anthropic>=0.40.0
+# OpenAI :
+openai>=1.40.0
+# Ollama (local) : utilise httpx
+httpx>=0.27.0
