@@ -137,7 +137,12 @@ class WebAIPanel(QWidget):
 
     # ------------------------------------------------------------------ #
     def load_url(self, url: str) -> None:
-        """Charge une URL arbitraire (utilisé par les pastilles GitHub CI)."""
+        """Charge une URL web (utilisé par les pastilles GitHub CI).
+
+        Seuls http/https sont acceptés — pas de file://, javascript:, etc.
+        """
+        if not url.startswith(("http://", "https://")):
+            return
         self.view.setUrl(QUrl(url))
 
     def shutdown(self) -> None:

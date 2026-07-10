@@ -43,13 +43,48 @@ _LEXERS = {
 class BBSEditor(QsciScintilla):
     """Éditeur mono-fichier. Un onglet de l'éditeur central en instancie un."""
 
-    def __init__(self, parent=None):
+    # Émis quand la taille de police change par zoom (pour persistance globale)
+    from PyQt6.QtCore import pyqtSignal as _sig
+    font_size_changed = _sig(int)
+
+    MIN_SIZE = 7
+    MAX_SIZE = 32
+
+    def __init__(self, font_size: int = 11, parent=None):
         super().__init__(parent)
         self.file_path: str | None = None
-        self._font = QFont("JetBrains Mono", 11)
+        self._font_size = max(self.MIN_SIZE, min(self.MAX_SIZE, font_size))
+        self._font = QFont("JetBrains Mono", self._font_size)
         self._font.setFixedPitch(True)
         self.setFont(self._font)
         self._configure()
+
+    # ------------------------------------------------------------------ #
+    def set_font_size(self, size: int) -> None:
+        """Change la taille de police de l'éditeur (et de son lexer)."""
+        size = max(self.MIN_SIZE, min(self.MAX_SIZE, size))
+        if size == self._font_size:
+            return
+        self._font_size = size
+        self._font.setPointSize(size)
+        self.setFont(self._font)
+        lexer = self.lexer()
+        if lexer is not None:
+            lexer.setFont(self._font)
+        self.font_size_changed.emit(size)
+
+    def font_size(self) -> int:
+        return self._font_size
+
+    def wheelEvent(self, event):
+        # Ctrl + molette : zoom du code
+        from PyQt6.QtCore import Qt as _Qt
+        if event.modifiers() & _Qt.KeyboardModifier.ControlModifier:
+            delta = event.angleDelta().y()
+            self.set_font_size(self._font_size + (1 if delta > 0 else -1))
+            event.accept()
+            return
+        super().wheelEvent(event)
 
     # ------------------------------------------------------------------ #
     def _configure(self) -> None:
@@ -98,20 +133,86 @@ class BBSEditor(QsciScintilla):
         lexer.setFont(self._font)
         lexer.setPaper(QColor(c["bg_deep"]))  # fond uniforme sur tous les styles
 
-        # Styles communs récurrents (indices stables d'un lexer à l'autre
-        # pour Python ; on reste prudent et on ne touche qu'aux plus fiables).
+        # Palette commune BBS, éclaircie pour le fond noir (toutes >= 4.5 WCAG AA)
+        KW   = "#6FB3E0"  # mots-clés (bleu clair)
+        STR  = "#7BD88F"  # chaînes (vert clair)
+        CMT  = "#8A919C"  # commentaires (gris clair, lisible)
+        NUM  = "#E0C060"  # nombres (jaune doux)
+        FUNC = "#82C7F5"  # fonctions (bleu vif)
+        CLS  = "#5CCFE6"  # classes / types (cyan)
+        OP   = "#F0A868"  # opérateurs / variables (orange clair)
+        TXT  = c["text_main"]
+
+        from PyQt6.Qsci import (
+            QsciLexerBash, QsciLexerJavaScript, QsciLexerCPP,
+            QsciLexerJSON, QsciLexerHTML, QsciLexerMarkdown,
+        )
+
         if isinstance(lexer, QsciLexerPython):
-            lexer.setColor(QColor("#CC7ADB"), QsciLexerPython.Keyword)
-            lexer.setColor(QColor("#4EC94E"), QsciLexerPython.DoubleQuotedString)
-            lexer.setColor(QColor("#4EC94E"), QsciLexerPython.SingleQuotedString)
-            lexer.setColor(QColor("#4EC94E"), QsciLexerPython.TripleDoubleQuotedString)
-            lexer.setColor(QColor("#4EC94E"), QsciLexerPython.TripleSingleQuotedString)
-            lexer.setColor(QColor("#555B63"), QsciLexerPython.Comment)
-            lexer.setColor(QColor("#555B63"), QsciLexerPython.CommentBlock)
-            lexer.setColor(QColor("#5B9BD5"), QsciLexerPython.FunctionMethodName)
-            lexer.setColor(QColor("#5B9BD5"), QsciLexerPython.ClassName)
-            lexer.setColor(QColor("#D4A843"), QsciLexerPython.Number)
-            lexer.setColor(QColor("#E87D3E"), QsciLexerPython.Decorator)
+            for st in (lexer.DoubleQuotedString, lexer.SingleQuotedString,
+                       lexer.TripleDoubleQuotedString, lexer.TripleSingleQuotedString):
+                lexer.setColor(QColor(STR), st)
+            lexer.setColor(QColor(KW),  lexer.Keyword)
+            lexer.setColor(QColor(CMT), lexer.Comment)
+            lexer.setColor(QColor(CMT), lexer.CommentBlock)
+            lexer.setColor(QColor(FUNC), lexer.FunctionMethodName)
+            lexer.setColor(QColor(CLS),  lexer.ClassName)
+            lexer.setColor(QColor(NUM), lexer.Number)
+            lexer.setColor(QColor(OP),  lexer.Decorator)
+
+        elif isinstance(lexer, QsciLexerBash):
+            lexer.setColor(QColor(TXT),  lexer.Default)
+            lexer.setColor(QColor(KW),   lexer.Keyword)
+            lexer.setColor(QColor(CMT),  lexer.Comment)
+            lexer.setColor(QColor(NUM),  lexer.Number)
+            lexer.setColor(QColor(STR),  lexer.DoubleQuotedString)
+            lexer.setColor(QColor(STR),  lexer.SingleQuotedString)
+            lexer.setColor(QColor(OP),   lexer.Operator)
+            lexer.setColor(QColor(TXT),  lexer.Identifier)
+            lexer.setColor(QColor(OP),   lexer.Scalar)             # $var
+            lexer.setColor(QColor(OP),   lexer.ParameterExpansion) # ${...}
+            lexer.setColor(QColor(FUNC), lexer.Backticks)
+
+        elif isinstance(lexer, QsciLexerJavaScript):
+            lexer.setColor(QColor(TXT),  lexer.Default)
+            lexer.setColor(QColor(KW),   lexer.Keyword)
+            lexer.setColor(QColor(CMT),  lexer.Comment)
+            lexer.setColor(QColor(CMT),  lexer.CommentLine)
+            lexer.setColor(QColor(CMT),  lexer.CommentDoc)
+            lexer.setColor(QColor(NUM),  lexer.Number)
+            lexer.setColor(QColor(STR),  lexer.DoubleQuotedString)
+            lexer.setColor(QColor(STR),  lexer.SingleQuotedString)
+            lexer.setColor(QColor(OP),   lexer.Operator)
+            lexer.setColor(QColor(CLS),  lexer.GlobalClass)
+
+        elif isinstance(lexer, QsciLexerCPP):
+            lexer.setColor(QColor(TXT),  lexer.Default)
+            lexer.setColor(QColor(KW),   lexer.Keyword)
+            lexer.setColor(QColor(CMT),  lexer.Comment)
+            lexer.setColor(QColor(CMT),  lexer.CommentLine)
+            lexer.setColor(QColor(CMT),  lexer.CommentDoc)
+            lexer.setColor(QColor(NUM),  lexer.Number)
+            lexer.setColor(QColor(STR),  lexer.DoubleQuotedString)
+            lexer.setColor(QColor(STR),  lexer.SingleQuotedString)
+            lexer.setColor(QColor(OP),   lexer.Operator)
+            lexer.setColor(QColor(CLS),  lexer.GlobalClass)
+            lexer.setColor(QColor(OP),   lexer.PreProcessor)
+
+        elif isinstance(lexer, QsciLexerJSON):
+            lexer.setColor(QColor(FUNC), lexer.Property)
+            lexer.setColor(QColor(STR),  lexer.String)
+            lexer.setColor(QColor(NUM),  lexer.Number)
+            lexer.setColor(QColor(KW),   lexer.Keyword)
+
+        elif isinstance(lexer, QsciLexerMarkdown):
+            lexer.setColor(QColor(TXT), lexer.Default)
+
+        elif isinstance(lexer, QsciLexerHTML):
+            lexer.setColor(QColor(KW),  lexer.Tag)
+            lexer.setColor(QColor(OP),  lexer.Attribute)
+            lexer.setColor(QColor(STR), lexer.HTMLDoubleQuotedString)
+            lexer.setColor(QColor(STR), lexer.HTMLSingleQuotedString)
+            lexer.setColor(QColor(CMT), lexer.HTMLComment)
 
     # ------------------------------------------------------------------ #
     def load_file(self, path: str) -> None:

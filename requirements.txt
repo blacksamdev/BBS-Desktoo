@@ -14,3 +14,5 @@ anthropic>=0.40.0
 openai>=1.40.0
 # Ollama (local) : utilise httpx
 httpx>=0.27.0
+keyring>=25
+secretstorage>=3.3   # backend trousseau Linux (Secret Service / KWallet)
