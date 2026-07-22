@@ -22,10 +22,16 @@ keyring>=25.6.0
 SecretStorage>=3.3.3
 
 # --- Planchers de sécurité sur dépendances transitives ---
-# Ces paquets ne sont pas importés directement par desktOO, mais tirés par
-# httpx (anyio, idna) et keyring -> SecretStorage (cryptography, zipp).
-# Sans plancher explicite, la résolution retombe sur des versions vulnérables.
-anyio>=4.4.0            # CVE race condition (SNYK-PYTHON-ANYIO-7361842)
+# desktOO n'importe pas ces paquets : ils sont tirés par httpx (anyio, idna)
+# et par keyring -> SecretStorage (cryptography). Sans plancher explicite, la
+# résolution des scanners retombe sur de vieilles versions vulnérables.
+anyio>=4.4.0            # race condition (SNYK-PYTHON-ANYIO-7361842)
 idna>=3.15              # ReDoS (SNYK-PYTHON-IDNA-16769942)
-cryptography>=46.0.7    # vérif. d'authenticité, cert., OOB write
-zipp>=3.19.1            # boucle infinie (SNYK-PYTHON-ZIPP-7430899)
+cryptography>=46.0.7    # authenticité / certificats / OOB write
+
+# zipp et importlib_metadata ne sont PAS utilisés sur Python 3.12+ :
+# importlib.metadata fait partie de la bibliothèque standard depuis 3.10 et
+# keyring n'en dépend plus. Le marqueur ci-dessous le dit explicitement, pour
+# éviter qu'un scanner résolve un arbre « ancien Python » et signale zipp 3.15
+# (boucle infinie, SNYK-PYTHON-ZIPP-7430899) qui n'existe pas dans cette install.
+zipp>=3.19.1; python_version < "3.10"
