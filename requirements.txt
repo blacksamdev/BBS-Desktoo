@@ -1,18 +1,31 @@
 # BBS desktOO — dépendances
+#
+# Les planchers de version sont volontairement récents : un « >= » trop bas
+# fait résoudre les scanners (Snyk, Dependabot) vers la plus vieille version
+# acceptable, qui traîne d'anciennes CVE. On fixe donc des minima sûrs.
 
 # --- Cœur (obligatoire) ---
-PyQt6>=6.6.0
-PyQt6-QScintilla>=2.14.0
+PyQt6>=6.8.0
+PyQt6-QScintilla>=2.14.1
 
-# --- IA web embarquée (panneau haut, claude.ai) ---
-PyQt6-WebEngine>=6.6.0
+# --- IA web embarquée (panneau haut : Claude, Gemini, Mistral) ---
+# QtWebEngine embarque Chromium : garder une version récente est important.
+PyQt6-WebEngine>=6.8.0
 
-# --- Providers IA locaux/cloud (optionnels) ---
-# Claude :
+# --- Providers IA (optionnels selon usage) ---
 anthropic>=0.40.0
-# OpenAI :
 openai>=1.40.0
-# Ollama (local) : utilise httpx
-httpx>=0.27.0
-keyring>=25
-secretstorage>=3.3   # backend trousseau Linux (Secret Service / KWallet)
+httpx>=0.28.1
+
+# --- Secrets dans le trousseau système (KWallet / GNOME Keyring) ---
+keyring>=25.6.0
+SecretStorage>=3.3.3
+
+# --- Planchers de sécurité sur dépendances transitives ---
+# Ces paquets ne sont pas importés directement par desktOO, mais tirés par
+# httpx (anyio, idna) et keyring -> SecretStorage (cryptography, zipp).
+# Sans plancher explicite, la résolution retombe sur des versions vulnérables.
+anyio>=4.4.0            # CVE race condition (SNYK-PYTHON-ANYIO-7361842)
+idna>=3.15              # ReDoS (SNYK-PYTHON-IDNA-16769942)
+cryptography>=46.0.7    # vérif. d'authenticité, cert., OOB write
+zipp>=3.19.1            # boucle infinie (SNYK-PYTHON-ZIPP-7430899)
