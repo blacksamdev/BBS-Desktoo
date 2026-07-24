@@ -29,9 +29,11 @@ anyio>=4.4.0            # race condition (SNYK-PYTHON-ANYIO-7361842)
 idna>=3.15              # ReDoS (SNYK-PYTHON-IDNA-16769942)
 cryptography>=46.0.7    # authenticité / certificats / OOB write
 
-# zipp et importlib_metadata ne sont PAS utilisés sur Python 3.12+ :
-# importlib.metadata fait partie de la bibliothèque standard depuis 3.10 et
-# keyring n'en dépend plus. Le marqueur ci-dessous le dit explicitement, pour
-# éviter qu'un scanner résolve un arbre « ancien Python » et signale zipp 3.15
-# (boucle infinie, SNYK-PYTHON-ZIPP-7430899) qui n'existe pas dans cette install.
-zipp>=3.19.1; python_version < "3.10"
+# Chaîne keyring -> importlib_metadata -> zipp.
+# keyring ne tire importlib_metadata que sur Python < 3.12 (au-delà,
+# importlib.metadata est dans la stdlib). Or importlib_metadata ancien réclame
+# « zipp>=0.5 », plancher si bas que les scanners résolvent zipp 3.15
+# (boucle infinie, SNYK-PYTHON-ZIPP-7430899). On verrouille les deux niveaux :
+# le parent (qui exige alors zipp>=3.20) et zipp lui-même, sans condition.
+importlib_metadata>=8.5.0; python_version < "3.12"
+zipp>=3.19.1
